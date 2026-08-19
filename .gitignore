@@ -1,0 +1,108 @@
+# ===========================
+# Terraform
+# ===========================
+
+# Local .terraform directories
+.terraform/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Plan files
+*.tfplan
+
+# Local override files
+*.tfvars.local
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# NOTE: .terraform.lock.hcl IS committed for reproducible builds.
+# NOTE: *.tfvars example files ARE committed as documentation.
+
+# ===========================
+# Environment / Secrets
+# ===========================
+
+.env
+.env.*
+*.pem
+*.key
+
+# ===========================
+# OS - macOS
+# ===========================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ===========================
+# OS - Windows
+# ===========================
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===========================
+# OS - Linux
+# ===========================
+
+*~
+.nfs*
+
+# ===========================
+# IDEs and Editors
+# ===========================
+
+# VS Code
+.vscode/
+
+# JetBrains (IntelliJ, GoLand, etc.)
+.idea/
+*.iml
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.#*
+
+# ===========================
+# Test and Build Outputs
+# ===========================
+
+# Test output
+tests/output/
+coverage/
+
+# Infracost
+.infracost/
+
+# tfsec / checkov cache
+.tfsec/
+.checkov/
+
+# ===========================
+# Miscellaneous
+# ===========================
+
+# Archives
+*.zip
+*.tar.gz
+
+# Logs
+*.log
+!crash.log

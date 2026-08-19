@@ -1,0 +1,117 @@
+# -----------------------------------------------------------------------------
+# AWS Landing Zone Platform - CI Quality Gate
+#
+# Runs on every pull request and push to main.
+# All checks are credential-free — no AWS deployment occurs.
+#
+# Pipeline stages:
+# 1. Terraform format check
+# 2. Terraform validation (all fixtures + environments)
+# 3. Terraform native tests (mocked provider)
+# 4. Security scanning (Checkov)
+# 5. Secret scanning (gitleaks)
+# -----------------------------------------------------------------------------
+
+name: Terraform CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: Terraform Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version_file: .terraform-version
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+  validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    needs: format
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version_file: .terraform-version
+
+      - name: Validate All Configurations
+        run: make validate
+
+  test:
+    name: Terraform Tests
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version_file: .terraform-version
+
+      - name: Run Module Tests
+        run: make test
+
+  security:
+    name: Security Scan (Checkov)
+    runs-on: ubuntu-latest
+    needs: format
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          config_file: .checkov.yml
+          output_format: cli
+          soft_fail: false
+
+  secrets:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [format, validate, test, security, secrets]
+    if: always()
+    steps:
+      - name: Check Results
+        run: |
+          if [ "${{ needs.format.result }}" != "success" ] || \
+             [ "${{ needs.validate.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.security.result }}" != "success" ] || \
+             [ "${{ needs.secrets.result }}" != "success" ]; then
+            echo "One or more quality gates failed."
+            exit 1
+          fi
+          echo "All quality gates passed."

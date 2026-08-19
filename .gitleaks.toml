@@ -1,0 +1,22 @@
+# -----------------------------------------------------------------------------
+# Gitleaks Configuration
+#
+# Prevents false positives from intentional mock credentials in test fixtures.
+# Real secrets must never be committed.
+# -----------------------------------------------------------------------------
+
+[allowlist]
+  description = "Allow mock credentials used in validation fixtures"
+
+  # Mock access/secret keys used in provider skip blocks for structural validation
+  regexTarget = "match"
+  regexes = [
+    '''mock-access-key-for-validation''',
+    '''mock-secret-key-for-validation''',
+  ]
+
+  # Paths that contain intentionally synthetic test data
+  paths = [
+    '''tests/fixtures/.*/main\.tf''',
+    '''environments/reference/providers\.tf''',
+  ]
