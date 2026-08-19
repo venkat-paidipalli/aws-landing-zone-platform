@@ -307,3 +307,16 @@ run "metadata_output" {
     error_message = "Metadata should report flow logs disabled."
   }
 }
+
+# -----------------------------------------------------------------------------
+# Test: Default security group restricted
+# -----------------------------------------------------------------------------
+
+run "default_sg_restricted" {
+  command = plan
+
+  assert {
+    condition     = aws_default_security_group.this.tags["Name"] == "default-restricted"
+    error_message = "Default security group should be managed and named default-restricted."
+  }
+}

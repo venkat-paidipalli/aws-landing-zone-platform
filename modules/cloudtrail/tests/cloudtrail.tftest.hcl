@@ -258,3 +258,48 @@ run "write_only_events" {
     error_message = "Should support WriteOnly management events."
   }
 }
+
+# -----------------------------------------------------------------------------
+# Test: CloudWatch Logs enabled by default
+# -----------------------------------------------------------------------------
+
+run "cloudwatch_logs_enabled" {
+  command = plan
+
+  assert {
+    condition     = length(aws_cloudwatch_log_group.trail) == 1
+    error_message = "CloudWatch Log Group should be created by default."
+  }
+
+  assert {
+    condition     = length(aws_iam_role.cloudtrail_cloudwatch) == 1
+    error_message = "CloudWatch IAM role should be created by default."
+  }
+
+  assert {
+    condition     = output.cloudtrail_metadata.cloudwatch_logs == true
+    error_message = "Metadata should report cloudwatch_logs=true."
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: CloudWatch Logs can be disabled
+# -----------------------------------------------------------------------------
+
+run "cloudwatch_logs_disabled" {
+  command = plan
+
+  variables {
+    enable_cloudwatch_logs = false
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_log_group.trail) == 0
+    error_message = "No CloudWatch Log Group when disabled."
+  }
+
+  assert {
+    condition     = length(aws_iam_role.cloudtrail_cloudwatch) == 0
+    error_message = "No IAM role when CloudWatch disabled."
+  }
+}

@@ -101,6 +101,28 @@ resource "aws_route_table" "private" {
 }
 
 # -----------------------------------------------------------------------------
+# Default Security Group - Restrict all traffic
+#
+# Every VPC has a default security group. If left unmanaged, it allows all
+# traffic between members. This resource explicitly locks it down to deny
+# all ingress and egress, ensuring workloads must use purpose-built SGs.
+# -----------------------------------------------------------------------------
+
+resource "aws_default_security_group" "this" {
+  vpc_id = aws_vpc.this.id
+
+  # No ingress or egress rules = deny all traffic
+  tags = merge(
+    var.tags,
+    {
+      ManagedBy = "terraform"
+      Component = "vpc"
+      Name      = "default-restricted"
+    },
+  )
+}
+
+# -----------------------------------------------------------------------------
 # Route Table Associations
 # -----------------------------------------------------------------------------
 

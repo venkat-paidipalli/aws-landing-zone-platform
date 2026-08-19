@@ -94,6 +94,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     id     = "log-retention"
     status = "Enabled"
 
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+
     dynamic "transition" {
       for_each = var.transition_to_ia_days > 0 ? [1] : []
       content {

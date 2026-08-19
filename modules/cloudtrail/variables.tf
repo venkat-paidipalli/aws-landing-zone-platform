@@ -83,6 +83,23 @@ variable "kms_key_id" {
   default     = ""
 }
 
+variable "enable_cloudwatch_logs" {
+  description = "Enable CloudWatch Logs integration for real-time trail event delivery."
+  type        = bool
+  default     = true
+}
+
+variable "cloudwatch_log_group_retention" {
+  description = "CloudWatch Log Group retention in days. 0 = never expire."
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.cloudwatch_log_group_retention)
+    error_message = "Retention must be a valid CloudWatch Logs retention value."
+  }
+}
+
 variable "management_event_read_write_type" {
   description = "Type of management events to log. ALL captures both read and write. ReadOnly or WriteOnly for selective capture."
   type        = string

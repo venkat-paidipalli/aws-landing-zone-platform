@@ -46,5 +46,6 @@ output "cloudtrail_metadata" {
     management_event_type = var.management_event_read_write_type
     sns_enabled           = var.sns_topic_name != ""
     kms_enabled           = var.kms_key_id != ""
+    cloudwatch_logs       = var.enable_cloudwatch_logs
   }
 }

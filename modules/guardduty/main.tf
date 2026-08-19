@@ -19,6 +19,9 @@
 # - Automated remediation
 # -----------------------------------------------------------------------------
 
+# checkov:skip=CKV2_AWS_3:GuardDuty organization-level administration is intentionally
+# out of scope for this account-level module. Organization-wide GuardDuty with delegated
+# administrator belongs to a future security-account composition layer (see ADR-004).
 resource "aws_guardduty_detector" "this" {
   enable                       = var.enable
   finding_publishing_frequency = var.finding_publishing_frequency
