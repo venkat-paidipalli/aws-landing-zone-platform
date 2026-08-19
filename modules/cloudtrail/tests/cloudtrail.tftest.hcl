@@ -277,6 +277,11 @@ run "cloudwatch_logs_enabled" {
   }
 
   assert {
+    condition     = length(aws_kms_key.cloudwatch) == 1
+    error_message = "KMS key should be created for CloudWatch Logs encryption."
+  }
+
+  assert {
     condition     = output.cloudtrail_metadata.cloudwatch_logs == true
     error_message = "Metadata should report cloudwatch_logs=true."
   }
@@ -301,5 +306,10 @@ run "cloudwatch_logs_disabled" {
   assert {
     condition     = length(aws_iam_role.cloudtrail_cloudwatch) == 0
     error_message = "No IAM role when CloudWatch disabled."
+  }
+
+  assert {
+    condition     = length(aws_kms_key.cloudwatch) == 0
+    error_message = "No KMS key when CloudWatch disabled."
   }
 }

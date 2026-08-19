@@ -9,41 +9,68 @@
 # - S3 delivery
 # - Log file integrity validation
 # - Multi-region coverage
+# - CloudWatch Logs integration with KMS encryption
 #
 # NOT in scope:
 # - S3 bucket creation (use log-archive module)
 # - Organization trail (future scope)
 # - Data events (opt-in, high volume/cost)
-# - CloudWatch Logs integration (future scope)
 # - Automated alerting/response
 #
 # Dependencies:
 # - S3 bucket must exist with CloudTrail delivery policy
-# - Optional: KMS key for encryption
+# - Optional: KMS key for trail encryption
 # - Optional: SNS topic for notifications
 # -----------------------------------------------------------------------------
 
-resource "aws_cloudtrail" "this" {
-  name           = var.trail_name
-  s3_bucket_name = var.s3_bucket_name
-  s3_key_prefix  = var.s3_key_prefix != "" ? var.s3_key_prefix : null
+# -----------------------------------------------------------------------------
+# CloudWatch Logs Integration
+#
+# Creates a KMS-encrypted CloudWatch Log Group and least-privilege IAM role
+# for CloudTrail event delivery. Enabled by default for real-time visibility.
+# -----------------------------------------------------------------------------
 
-  is_multi_region_trail         = var.is_multi_region_trail
-  include_global_service_events = var.include_global_service_events
-  enable_log_file_validation    = var.enable_log_file_validation
-  enable_logging                = var.enable_logging
-  is_organization_trail         = var.is_organization_trail
+resource "aws_kms_key" "cloudwatch" {
+  count = var.enable_cloudwatch_logs ? 1 : 0
 
-  sns_topic_name = var.sns_topic_name != "" ? var.sns_topic_name : null
-  kms_key_id     = var.kms_key_id != "" ? var.kms_key_id : null
+  description             = "KMS key for CloudTrail CloudWatch Logs encryption - ${var.trail_name}"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
 
-  cloud_watch_logs_group_arn = var.enable_cloudwatch_logs ? "${aws_cloudwatch_log_group.trail[0].arn}:*" : null
-  cloud_watch_logs_role_arn  = var.enable_cloudwatch_logs ? aws_iam_role.cloudtrail_cloudwatch[0].arn : null
-
-  event_selector {
-    read_write_type           = var.management_event_read_write_type
-    include_management_events = true
-  }
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${data.aws_region.current.region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/cloudtrail/${var.trail_name}"
+          }
+        }
+      },
+    ]
+  })
 
   tags = merge(
     var.tags,
@@ -54,15 +81,19 @@ resource "aws_cloudtrail" "this" {
   )
 }
 
-# -----------------------------------------------------------------------------
-# CloudWatch Logs Integration (optional, enabled by default)
-# -----------------------------------------------------------------------------
+resource "aws_kms_alias" "cloudwatch" {
+  count = var.enable_cloudwatch_logs ? 1 : 0
+
+  name          = "alias/cloudtrail-logs-${var.trail_name}"
+  target_key_id = aws_kms_key.cloudwatch[0].key_id
+}
 
 resource "aws_cloudwatch_log_group" "trail" {
   count = var.enable_cloudwatch_logs ? 1 : 0
 
   name              = "/aws/cloudtrail/${var.trail_name}"
   retention_in_days = var.cloudwatch_log_group_retention
+  kms_key_id        = aws_kms_key.cloudwatch[0].arn
 
   tags = merge(
     var.tags,
@@ -116,4 +147,51 @@ resource "aws_iam_role_policy" "cloudtrail_cloudwatch" {
       Resource = "${aws_cloudwatch_log_group.trail[0].arn}:*"
     }]
   })
+}
+
+# -----------------------------------------------------------------------------
+# Data sources for KMS policy
+# -----------------------------------------------------------------------------
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# -----------------------------------------------------------------------------
+# CloudTrail Trail
+# -----------------------------------------------------------------------------
+
+resource "aws_cloudtrail" "this" {
+  name           = var.trail_name
+  s3_bucket_name = var.s3_bucket_name
+  s3_key_prefix  = var.s3_key_prefix != "" ? var.s3_key_prefix : null
+
+  is_multi_region_trail         = var.is_multi_region_trail
+  include_global_service_events = var.include_global_service_events
+  enable_log_file_validation    = var.enable_log_file_validation
+  enable_logging                = var.enable_logging
+  is_organization_trail         = var.is_organization_trail
+
+  sns_topic_name = var.sns_topic_name != "" ? var.sns_topic_name : null
+  kms_key_id     = var.kms_key_id != "" ? var.kms_key_id : null
+
+  cloud_watch_logs_group_arn = var.enable_cloudwatch_logs ? "${aws_cloudwatch_log_group.trail[0].arn}:*" : null
+  cloud_watch_logs_role_arn  = var.enable_cloudwatch_logs ? aws_iam_role.cloudtrail_cloudwatch[0].arn : null
+
+  event_selector {
+    read_write_type           = var.management_event_read_write_type
+    include_management_events = true
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.trail,
+    aws_iam_role_policy.cloudtrail_cloudwatch,
+  ]
+
+  tags = merge(
+    var.tags,
+    {
+      ManagedBy = "terraform"
+      Component = "cloudtrail"
+    },
+  )
 }
