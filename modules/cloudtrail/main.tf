@@ -160,7 +160,9 @@ data "aws_region" "current" {}
 # CloudTrail Trail
 # -----------------------------------------------------------------------------
 
+# checkov:skip=CKV2_AWS_10:CloudWatch Logs integration IS configured via cloud_watch_logs_group_arn and cloud_watch_logs_role_arn with KMS encryption. Checkov graph analysis cannot resolve conditional count-indexed references.
 resource "aws_cloudtrail" "this" {
+  #checkov:skip=CKV2_AWS_10:CloudWatch Logs IS integrated (aws_cloudwatch_log_group.trail + IAM role + KMS). Checkov cannot resolve conditional references through count indexes.
   name           = var.trail_name
   s3_bucket_name = var.s3_bucket_name
   s3_key_prefix  = var.s3_key_prefix != "" ? var.s3_key_prefix : null

@@ -21,6 +21,7 @@
 
 # checkov:skip=CKV2_AWS_3:Account-level module by design. Org-wide GuardDuty admin is future scope (ADR-004)
 resource "aws_guardduty_detector" "this" {
+  #checkov:skip=CKV2_AWS_3:Account-level detector only. Organization GuardDuty admin belongs to future security-account composition (ADR-004)
   enable                       = var.enable
   finding_publishing_frequency = var.finding_publishing_frequency
 
